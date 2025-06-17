@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var chapterSelection: Int = 1
     @State private var verseSelection: Int = 1
     @State private var passageEndSelection = "Chapter"
+    @State private var showPassageSelection = false
     
     var chapters: Int {
         switch bookSelection {
@@ -47,51 +48,61 @@ struct ContentView: View {
                     Text("\($0)")
                 }
             }
-            
-            VStack {
-                Form {
-                    Section("Start") {
-                        Picker(selection: $chapterSelection, label: Text("Chapter")) {
-                            ForEach(0..<chapters+1, id: \.self) {
-                                Text("\($0)")
-                            }
-                        }
-                        
-                        Picker(selection: $verseSelection, label: Text("Verse")) {
-                            ForEach(0..<verses, id: \.self) {
-                                Text("\($0)")
-                            }
-                        }
-                    }
-                    
-                    Section("End") {
-                        Picker("End of Passage", selection: $passageEndSelection) {
-                            ForEach(passageEndSelectionOptions, id: \.self) {
-                                Text("\($0)")
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        
-                        if passageEndSelection == "Custom" {
-                            Picker(selection: $chapterSelection, label: Text("Chapter")) {
-                                ForEach(0..<chapters+1, id: \.self) {
-                                    Text("\($0)")
+        } detail: {
+            PassageView(verseStart: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection))
+                .padding()
+                .sheet(isPresented: $showPassageSelection) {
+                    VStack {
+                        Form {
+                            Section("Start") {
+                                Picker(selection: $chapterSelection, label: Text("Chapter")) {
+                                    ForEach(0..<chapters+1, id: \.self) {
+                                        Text("\($0)")
+                                    }
+                                }
+
+                                Picker(selection: $verseSelection, label: Text("Verse")) {
+                                    ForEach(0..<verses, id: \.self) {
+                                        Text("\($0)")
+                                    }
                                 }
                             }
-                            
-                            Picker(selection: $verseSelection, label: Text("Verse")) {
-                                ForEach(0..<verses, id: \.self) {
-                                    Text("\($0)")
+
+                            Section("End") {
+                                Picker("End of Passage", selection: $passageEndSelection) {
+                                    ForEach(passageEndSelectionOptions, id: \.self) {
+                                        Text("\($0)")
+                                    }
+                                }
+                                .pickerStyle(.segmented)
+
+                                if passageEndSelection == "Custom" {
+                                    Picker(selection: $chapterSelection, label: Text("Chapter")) {
+                                        ForEach(0..<chapters+1, id: \.self) {
+                                            Text("\($0)")
+                                        }
+                                    }
+
+                                    Picker(selection: $verseSelection, label: Text("Verse")) {
+                                        ForEach(0..<verses, id: \.self) {
+                                            Text("\($0)")
+                                        }
+                                    }
                                 }
                             }
+                            .navigationBarTitle("Select Passage")
                         }
                     }
                 }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showPassageSelection.toggle()
+                    }) {
+                        Text("Select Passage")
+                    }
+                }
             }
-            .frame(height: 350)
-        } detail: {
-            PassageView(verseStart: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection))
-                    .padding()
         }
     }
 }

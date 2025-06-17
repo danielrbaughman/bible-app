@@ -1,4 +1,4 @@
-# Bible App README
+# Bible App
 
 ## Overview
 This project is an iPadOS application designed to provide an interface for accessing the Bible. It aims to provide a minimal, beautiful interface and to leverage native iPadOS development tools. 

@@ -7,7 +7,7 @@ struct NumberPickerView: View {
 
     var body: some View {
         Picker(selection: $selection, label: Text("\(label)")) {
-            ForEach(0..<range+1, id: \.self) {
+            ForEach(1..<range+1, id: \.self) {
                 Text("\($0)")
             }
         }
@@ -89,6 +89,20 @@ struct ContentView: View {
                         .task {
                             await loadBookInfo(for: book)
                         }
+                        .onChange(of: chapterSelection) { oldValue, newValue in
+                            Task {
+                                await api.getVerseCount(bookId: book.id, chapter: newValue)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelection = 1
+                            }
+                        }
+                        .onChange(of: chapterSelectionEnd) { oldValue, newValue in
+                            Task {
+                                await api.getVerseCount(bookId: book.id, chapter: newValue)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelectionEnd = 1
+                            }
+                        }
                         .toolbar {
                             ToolbarItemGroup(placement: .navigationBarLeading) {
                                 Picker("Passage Setting", selection: $passageEndSelection) {
@@ -159,6 +173,58 @@ struct ContentView: View {
                 verses = 1
             }
         }
+    }
+    
+    func loadChapterCount(for book: Book) async {
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetChapterCount?bookId=\(book.id)")
+
+        var request = URLRequest(url: url!)
+        request.httpMethod = "GET"
+        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data {
+                let x = response as? HTTPURLResponse
+                print(x?.statusCode ?? "No HTTP Response")
+                if let result = try? JSONDecoder().decode(ChapterCount.self, from: data) {
+                    DispatchQueue.main.async {
+                        chapters = result.chapterCount
+                    }
+                } else {
+                    print("Invalid Chapter Count Response")
+                }
+            } else if let error = error {
+                print("HTTP Request Failed \(error)")
+            }
+        }
+
+        task.resume()
+    }
+    
+    func loadVerseCount(for book: Book, chapter: Int) async {
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetVerseCount?bookId=\(book.id)&chapterId=\(chapter)")
+
+        var request = URLRequest(url: url!)
+        request.httpMethod = "GET"
+        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data {
+                let x = response as? HTTPURLResponse
+                print(x?.statusCode ?? "No HTTP Response")
+                if let result = try? JSONDecoder().decode(VerseCount.self, from: data) {
+                    DispatchQueue.main.async {
+                        verses = max(1, result.verseCount) // Ensure at least 1 verse
+                    }
+                } else {
+                    print("Invalid Verse Count Response")
+                }
+            } else if let error = error {
+                print("HTTP Request Failed \(error)")
+            }
+        }
+
+        task.resume()
     }
 }
 

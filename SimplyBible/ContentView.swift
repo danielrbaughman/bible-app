@@ -75,13 +75,27 @@ struct ContentView: View {
                     PassageView(verseStart: Verse(book: book, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: book, chapter: chapterSelection, verse: verseSelection))
                         .padding()
                         .sheet(isPresented: $showChapterSelection) {
-                            ChapterPickerForm(chapters: 0, chapterSelection: $chapterSelection)
+                            ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
                         }
                         .sheet(isPresented: $showPassageStartSelection) {
-                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
                         }
                         .sheet(isPresented: $showPassageEndSelection) {
-                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                        }
+                        .task {
+                            await loadChapterCount(for: book)
+                            await loadVerseCount(for: book, chapter: chapterSelection)
+                        }
+                        .onChange(of: chapterSelection) { oldValue, newValue in
+                            Task {
+                                await loadVerseCount(for: book, chapter: newValue)
+                            }
+                        }
+                        .onChange(of: chapterSelectionEnd) { oldValue, newValue in
+                            Task {
+                                await loadVerseCount(for: book, chapter: newValue)
+                            }
                         }
                         .toolbar {
                             ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -138,6 +152,58 @@ struct ContentView: View {
                     books = resultBooks
                 } else {
                     print("Invalid Response")
+                }
+            } else if let error = error {
+                print("HTTP Request Failed \(error)")
+            }
+        }
+
+        task.resume()
+    }
+    
+    func loadChapterCount(for book: Book) async {
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetChapterCount?book=\(book.id)")
+
+        var request = URLRequest(url: url!)
+        request.httpMethod = "GET"
+        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data {
+                let x = response as? HTTPURLResponse
+                print(x?.statusCode ?? "No HTTP Response")
+                if let result = try? JSONDecoder().decode(ChapterCount.self, from: data) {
+                    DispatchQueue.main.async {
+                        chapters = result.chapterCount
+                    }
+                } else {
+                    print("Invalid Chapter Count Response")
+                }
+            } else if let error = error {
+                print("HTTP Request Failed \(error)")
+            }
+        }
+
+        task.resume()
+    }
+    
+    func loadVerseCount(for book: Book, chapter: Int) async {
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetVerseCount?book=\(book.id)&chapter=\(chapter)")
+
+        var request = URLRequest(url: url!)
+        request.httpMethod = "GET"
+        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data {
+                let x = response as? HTTPURLResponse
+                print(x?.statusCode ?? "No HTTP Response")
+                if let result = try? JSONDecoder().decode(VerseCount.self, from: data) {
+                    DispatchQueue.main.async {
+                        verses = result.verseCount
+                    }
+                } else {
+                    print("Invalid Verse Count Response")
                 }
             } else if let error = error {
                 print("HTTP Request Failed \(error)")

@@ -166,7 +166,7 @@ struct ContentView: View {
     }
     
     func loadChapterCount(for book: Book) async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetChapterCount?book=\(book.id)")
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetChapterCount?bookId=\(book.id)")
 
         var request = URLRequest(url: url!)
         request.httpMethod = "GET"
@@ -178,7 +178,7 @@ struct ContentView: View {
                 print(x?.statusCode ?? "No HTTP Response")
                 if let result = try? JSONDecoder().decode(ChapterCount.self, from: data) {
                     DispatchQueue.main.async {
-                        chapters = max(1, result.chapterCount) // Ensure at least 1 chapter
+                        chapters = result.chapterCount
                     }
                 } else {
                     print("Invalid Chapter Count Response")
@@ -192,7 +192,7 @@ struct ContentView: View {
     }
     
     func loadVerseCount(for book: Book, chapter: Int) async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetVerseCount?book=\(book.id)&chapter=\(chapter)")
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetVerseCount?bookId=\(book.id)&chapterId=\(chapter)")
 
         var request = URLRequest(url: url!)
         request.httpMethod = "GET"

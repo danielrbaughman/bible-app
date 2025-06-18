@@ -7,12 +7,18 @@
 
 import Foundation
 
-struct Verse {
-    var book: Book
-    var chapter: Int
-    var verse: Int?
+public struct Verse {
+    public var book: Book
+    public var chapter: Int
+    public var verse: Int?
 
-    func formatted() -> String {
+    public init(book: Book, chapter: Int, verse: Int? = nil) {
+        self.book = book
+        self.chapter = chapter
+        self.verse = verse
+    }
+
+    public func formatted() -> String {
         if verse == nil {
             return "\(book.name) \(chapter)"
         }

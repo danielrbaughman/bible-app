@@ -7,13 +7,18 @@
 
 import Foundation
 
-struct Book: Codable, Hashable {
-    enum CodingKeys: String, CodingKey {
+public struct Book: Codable, Hashable {
+    public enum CodingKeys: String, CodingKey {
         // Map the JSON key "url" to the Swift property name "htmlLink"
         case id = "b"
         case name = "n"
     }
     
-    var id: String
-    var name: String
+    public var id: String
+    public var name: String
+    
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
 }

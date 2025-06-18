@@ -62,6 +62,9 @@ struct ContentView: View {
     @State private var verses: Int = 0
     
     @State private var path = NavigationPath()
+    
+    // IQ Bible API instance
+    private let api = IQBibleAPI(apiKey: "38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3")
 
     var body: some View {
         NavigationSplitView {
@@ -75,13 +78,16 @@ struct ContentView: View {
                     PassageView(verseStart: Verse(book: book, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: book, chapter: chapterSelection, verse: verseSelection))
                         .padding()
                         .sheet(isPresented: $showChapterSelection) {
-                            ChapterPickerForm(chapters: 0, chapterSelection: $chapterSelection)
+                            ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
                         }
                         .sheet(isPresented: $showPassageStartSelection) {
-                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
                         }
                         .sheet(isPresented: $showPassageEndSelection) {
-                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                        }
+                        .task {
+                            await loadBookInfo(for: book)
                         }
                         .toolbar {
                             ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -124,27 +130,35 @@ struct ContentView: View {
     }
     
     func loadBooks() async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetBooks?language=english")
-
-        var request = URLRequest(url: url!)
-        request.httpMethod = "GET"
-        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let data = data {
-                let x = response as? HTTPURLResponse
-                print(x?.statusCode ?? "No HTTP Response")
-                if let resultBooks = try? JSONDecoder().decode([Book].self, from: data) {
-                    books = resultBooks
-                } else {
-                    print("Invalid Response")
-                }
-            } else if let error = error {
-                print("HTTP Request Failed \(error)")
+        do {
+            let resultBooks = try await api.getBooks()
+            await MainActor.run {
+                books = resultBooks
+            }
+        } catch {
+            print("Failed to load books: \(error.localizedDescription)")
+        }
+    }
+    
+    func loadBookInfo(for book: Book) async {
+        do {
+            // Load chapter count for the book
+            let chapterCount = try await api.getChapterCount(bookId: book.id)
+            
+            // Load verse count for the current chapter
+            let verseCount = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+            
+            await MainActor.run {
+                chapters = chapterCount.chapterCount
+                verses = verseCount.verseCount
+            }
+        } catch {
+            print("Failed to load book info: \(error.localizedDescription)")
+            await MainActor.run {
+                chapters = 1
+                verses = 1
             }
         }
-
-        task.resume()
     }
 }
 

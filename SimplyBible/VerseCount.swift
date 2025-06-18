@@ -7,6 +7,10 @@
 
 import Foundation
 
-struct VerseCount: Codable {
-    var verseCount: Int
+public struct VerseCount: Codable {
+    public var verseCount: Int
+    
+    public init(verseCount: Int) {
+        self.verseCount = verseCount
+    }
 }

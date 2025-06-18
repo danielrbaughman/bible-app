@@ -62,6 +62,9 @@ struct ContentView: View {
     @State private var verses: Int = 0
     
     @State private var path = NavigationPath()
+    
+    // IQ Bible API instance
+    private let api = IQBibleAPI(apiKey: "38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3")
 
     var body: some View {
         NavigationSplitView {
@@ -84,19 +87,18 @@ struct ContentView: View {
                             VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
                         }
                         .task {
-                            await loadChapterCount(for: book)
-                            await loadVerseCount(for: book, chapter: chapterSelection)
+                            await loadBookInfo(for: book)
                         }
                         .onChange(of: chapterSelection) { oldValue, newValue in
                             Task {
-                                await loadVerseCount(for: book, chapter: newValue)
+                                await api.getVerseCount(bookId: book.id, chapter: newValue)
                                 // Reset verse selection to 1 when chapter changes
                                 verseSelection = 1
                             }
                         }
                         .onChange(of: chapterSelectionEnd) { oldValue, newValue in
                             Task {
-                                await loadVerseCount(for: book, chapter: newValue)
+                                await api.getVerseCount(bookId: book.id, chapter: newValue)
                                 // Reset verse selection to 1 when chapter changes
                                 verseSelectionEnd = 1
                             }
@@ -142,27 +144,35 @@ struct ContentView: View {
     }
     
     func loadBooks() async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetBooks?language=english")
-
-        var request = URLRequest(url: url!)
-        request.httpMethod = "GET"
-        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let data = data {
-                let x = response as? HTTPURLResponse
-                print(x?.statusCode ?? "No HTTP Response")
-                if let resultBooks = try? JSONDecoder().decode([Book].self, from: data) {
-                    books = resultBooks
-                } else {
-                    print("Invalid Response")
-                }
-            } else if let error = error {
-                print("HTTP Request Failed \(error)")
+        do {
+            let resultBooks = try await api.getBooks()
+            await MainActor.run {
+                books = resultBooks
+            }
+        } catch {
+            print("Failed to load books: \(error.localizedDescription)")
+        }
+    }
+    
+    func loadBookInfo(for book: Book) async {
+        do {
+            // Load chapter count for the book
+            let chapterCount = try await api.getChapterCount(bookId: book.id)
+            
+            // Load verse count for the current chapter
+            let verseCount = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+            
+            await MainActor.run {
+                chapters = chapterCount.chapterCount
+                verses = verseCount.verseCount
+            }
+        } catch {
+            print("Failed to load book info: \(error.localizedDescription)")
+            await MainActor.run {
+                chapters = 1
+                verses = 1
             }
         }
-
-        task.resume()
     }
     
     func loadChapterCount(for book: Book) async {

@@ -7,6 +7,10 @@
 
 import Foundation
 
-struct ChapterCount: Codable {
-    var chapterCount: Int
+public struct ChapterCount: Codable {
+    public var chapterCount: Int
+    
+    public init(chapterCount: Int) {
+        self.chapterCount = chapterCount
+    }
 }

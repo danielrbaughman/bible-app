@@ -28,6 +28,7 @@ struct PassageView: View {
     }
 }
 
-#Preview {
-    PassageView(verseStart: Verse(book: "Genesis", chapter: 1, verse: 1), verseEnd: Verse(book: "Genesis", chapter: 1, verse: 1))
-}
+//#Preview {
+//    let genesis = Book(id: "1", name: "Genesis")
+//    PassageView(verseStart: Verse(book: genesis, chapter: 1, verse: 1), verseEnd: Verse(book: genesis, chapter: 1, verse: 1))
+//}

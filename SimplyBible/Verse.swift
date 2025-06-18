@@ -8,15 +8,15 @@
 import Foundation
 
 struct Verse {
-    var book: String
+    var book: Book
     var chapter: Int
     var verse: Int?
 
     func formatted() -> String {
         if verse == nil {
-            return "\(book) \(chapter)"
+            return "\(book.name) \(chapter)"
         }
 
-        return "\(book) \(chapter):\(verse!)"
+        return "\(book.name) \(chapter):\(verse!)"
     }
 }

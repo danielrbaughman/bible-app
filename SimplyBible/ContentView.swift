@@ -45,10 +45,10 @@ struct VersePickerForm: View {
 }
 
 struct ContentView: View {
-    var books = ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"]
+    @State private var books: [Book] = []
     var passageEndSelectionOptions: [String] = ["Book", "Chapter", "Verse", "Range"]
-    @State private var bookSelection: String = "Genesis"
     @State private var chapterSelection: Int = 1
+    @State private var bookSelection: Book? = nil
     @State private var verseSelection: Int = 1
     @State private var chapterSelectionEnd: Int = 1
     @State private var verseSelectionEnd: Int = 1
@@ -58,38 +58,30 @@ struct ContentView: View {
     @State private var showPassageEndSelection = false
     @State private var showChapterSelection = false
 
-    var chapters: Int {
-        switch bookSelection {
-            case "Genesis": 50;
-            case "Exodus": 40;
-            case "Leviticus": 27;
-            case "Numbers": 36;
-            case "Deuteronomy": 34;
-            default: 0
-        }
-    }
-
-    var verses = Int.random(in: 1...50)
+    @State private var chapters: Int = 0
+    @State private var verses: Int = 0
+    
+    @State private var path = NavigationPath()
 
     var body: some View {
         NavigationSplitView {
             List {
-                ForEach(books, id: \.self) {
-                    NavigationLink("\($0)", value: $0)
+                ForEach(books, id: \.id) { book in
+                    NavigationLink("\(book.name)", value: book)
                 }
             }
-            .navigationDestination(for: String.self) {_ in
-                NavigationStack {
-                    PassageView(verseStart: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection))
+            .navigationDestination(for: Book.self) { book in
+                NavigationStack(path: $path) {
+                    PassageView(verseStart: Verse(book: book, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: book, chapter: chapterSelection, verse: verseSelection))
                         .padding()
                         .sheet(isPresented: $showChapterSelection) {
-                            ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
+                            ChapterPickerForm(chapters: 0, chapterSelection: $chapterSelection)
                         }
                         .sheet(isPresented: $showPassageStartSelection) {
-                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
+                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
                         }
                         .sheet(isPresented: $showPassageEndSelection) {
-                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                            VersePickerForm(chapters: chapters, verses: 1, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
                         }
                         .toolbar {
                             ToolbarItemGroup(placement: .navigationBarLeading) {
@@ -101,13 +93,13 @@ struct ContentView: View {
                                 .pickerStyle(.segmented)
 
                                 if (passageEndSelection == "Chapter") {
-                                    Button("\(Verse(book: bookSelection, chapter: chapterSelection).formatted())") {
+                                    Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {
                                         showChapterSelection.toggle()
                                     }
                                 }
 
                                 if (passageEndSelection == "Verse" || passageEndSelection == "Range") {
-                                    Button("\(Verse(book: bookSelection, chapter: chapterSelection, verse: verseSelection).formatted())") {
+                                    Button("\(Verse(book: book, chapter: chapterSelection, verse: verseSelection).formatted())") {
                                         showPassageStartSelection.toggle()
                                     }
                                 }
@@ -115,7 +107,7 @@ struct ContentView: View {
                                 if (passageEndSelection == "Range") {
                                     Text("to")
 
-                                    Button("\(Verse(book: bookSelection, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
+                                    Button("\(Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
                                         showPassageEndSelection.toggle()
                                     }
                                 }
@@ -126,6 +118,33 @@ struct ContentView: View {
         } detail: {
             ContentUnavailableView("Select a book", systemImage: "book", description: Text("Our collection includes the whole Protestant canon."))
         }
+        .task {
+            await loadBooks()
+        }
+    }
+    
+    func loadBooks() async {
+        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetBooks?language=english")
+
+        var request = URLRequest(url: url!)
+        request.httpMethod = "GET"
+        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let data = data {
+                let x = response as? HTTPURLResponse
+                print(x?.statusCode ?? "No HTTP Response")
+                if let resultBooks = try? JSONDecoder().decode([Book].self, from: data) {
+                    books = resultBooks
+                } else {
+                    print("Invalid Response")
+                }
+            } else if let error = error {
+                print("HTTP Request Failed \(error)")
+            }
+        }
+
+        task.resume()
     }
 }
 

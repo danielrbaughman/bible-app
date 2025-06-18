@@ -52,7 +52,7 @@ struct ContentView: View {
     @State private var verseSelection: Int = 1
     @State private var chapterSelectionEnd: Int = 1
     @State private var verseSelectionEnd: Int = 1
-    @State private var passageEndSelection = "Book"
+    @State private var passageEndSelection = "Chapter"
     @State private var showPassageSelection = false
     @State private var showPassageStartSelection = false
     @State private var showPassageEndSelection = false
@@ -62,6 +62,8 @@ struct ContentView: View {
     @State private var verses: Int = 0
     
     @State private var path = NavigationPath()
+    
+    private let api = IQBibleAPI(apiKey: "38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3")
 
     var body: some View {
         NavigationSplitView {
@@ -84,8 +86,7 @@ struct ContentView: View {
                             VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
                         }
                         .task {
-                            await loadChapterCount(for: book)
-                            await loadVerseCount(for: book, chapter: chapterSelection)
+                            await loadBookInfo(for: book)
                         }
                         .onChange(of: chapterSelection) { oldValue, newValue in
                             Task {
@@ -142,79 +143,32 @@ struct ContentView: View {
     }
     
     func loadBooks() async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetBooks?language=english")
-
-        var request = URLRequest(url: url!)
-        request.httpMethod = "GET"
-        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let data = data {
-                let x = response as? HTTPURLResponse
-                print(x?.statusCode ?? "No HTTP Response")
-                if let resultBooks = try? JSONDecoder().decode([Book].self, from: data) {
-                    books = resultBooks
-                } else {
-                    print("Invalid Response")
-                }
-            } else if let error = error {
-                print("HTTP Request Failed \(error)")
-            }
+        do {
+            books = try await api.getBooks()
+        } catch {
+            fatalError("Failed to load books: \(error)")
         }
-
-        task.resume()
     }
     
     func loadChapterCount(for book: Book) async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetChapterCount?bookId=\(book.id)")
-
-        var request = URLRequest(url: url!)
-        request.httpMethod = "GET"
-        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let data = data {
-                let x = response as? HTTPURLResponse
-                print(x?.statusCode ?? "No HTTP Response")
-                if let result = try? JSONDecoder().decode(ChapterCount.self, from: data) {
-                    DispatchQueue.main.async {
-                        chapters = result.chapterCount
-                    }
-                } else {
-                    print("Invalid Chapter Count Response")
-                }
-            } else if let error = error {
-                print("HTTP Request Failed \(error)")
-            }
+        do {
+            chapters = try await api.getChapterCount(bookId: book.id)
+        } catch {
+            fatalError()
         }
-
-        task.resume()
     }
     
     func loadVerseCount(for book: Book, chapter: Int) async {
-        let url = URL(string: "https://iq-bible.p.rapidapi.com/GetVerseCount?bookId=\(book.id)&chapterId=\(chapter)")
-
-        var request = URLRequest(url: url!)
-        request.httpMethod = "GET"
-        request.setValue("38fdb2453bmshba7572fc0922e6ap149b97jsnbc4ce6d440a3", forHTTPHeaderField: "x-rapidapi-key")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let data = data {
-                let x = response as? HTTPURLResponse
-                print(x?.statusCode ?? "No HTTP Response")
-                if let result = try? JSONDecoder().decode(VerseCount.self, from: data) {
-                    DispatchQueue.main.async {
-                        verses = max(1, result.verseCount) // Ensure at least 1 verse
-                    }
-                } else {
-                    print("Invalid Verse Count Response")
-                }
-            } else if let error = error {
-                print("HTTP Request Failed \(error)")
-            }
+        do {
+            verses = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+        } catch {
+            fatalError()
         }
-
-        task.resume()
+    }
+    
+    func loadBookInfo(for book: Book) async {
+        await loadChapterCount(for: book)
+        await loadVerseCount(for: book, chapter: chapterSelection)
     }
 }
 

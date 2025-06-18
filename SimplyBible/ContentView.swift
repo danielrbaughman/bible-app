@@ -7,7 +7,7 @@ struct NumberPickerView: View {
 
     var body: some View {
         Picker(selection: $selection, label: Text("\(label)")) {
-            ForEach(0..<range+1, id: \.self) {
+            ForEach(1..<range+1, id: \.self) {
                 Text("\($0)")
             }
         }
@@ -90,11 +90,15 @@ struct ContentView: View {
                         .onChange(of: chapterSelection) { oldValue, newValue in
                             Task {
                                 await loadVerseCount(for: book, chapter: newValue)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelection = 1
                             }
                         }
                         .onChange(of: chapterSelectionEnd) { oldValue, newValue in
                             Task {
                                 await loadVerseCount(for: book, chapter: newValue)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelectionEnd = 1
                             }
                         }
                         .toolbar {
@@ -174,7 +178,7 @@ struct ContentView: View {
                 print(x?.statusCode ?? "No HTTP Response")
                 if let result = try? JSONDecoder().decode(ChapterCount.self, from: data) {
                     DispatchQueue.main.async {
-                        chapters = result.chapterCount
+                        chapters = max(1, result.chapterCount) // Ensure at least 1 chapter
                     }
                 } else {
                     print("Invalid Chapter Count Response")
@@ -200,7 +204,7 @@ struct ContentView: View {
                 print(x?.statusCode ?? "No HTTP Response")
                 if let result = try? JSONDecoder().decode(VerseCount.self, from: data) {
                     DispatchQueue.main.async {
-                        verses = result.verseCount
+                        verses = max(1, result.verseCount) // Ensure at least 1 verse
                     }
                 } else {
                     print("Invalid Verse Count Response")

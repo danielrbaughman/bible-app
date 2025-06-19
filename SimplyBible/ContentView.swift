@@ -74,7 +74,32 @@ struct ContentView: View {
             }
             .navigationDestination(for: Book.self) { book in
                 NavigationStack(path: $path) {
-                    PassageView(verseStart: Verse(book: book, chapter: chapterSelection, verse: verseSelection), verseEnd: Verse(book: book, chapter: chapterSelection, verse: verseSelection))
+                    PassageView(
+                        verseStart: {
+                            switch passageEndSelection {
+                            case "Chapter":
+                                return Verse(book: book, chapter: chapterSelection, verse: nil)
+                            case "Verse":
+                                return Verse(book: book, chapter: chapterSelection, verse: verseSelection)
+                            case "Range":
+                                return Verse(book: book, chapter: chapterSelection, verse: verseSelection)
+                            default:
+                                return Verse(book: book, chapter: chapterSelection, verse: nil)
+                            }
+                        }(),
+                        verseEnd: {
+                            switch passageEndSelection {
+                            case "Chapter":
+                                return Verse(book: book, chapter: chapterSelection, verse: nil)
+                            case "Verse":
+                                return Verse(book: book, chapter: chapterSelection, verse: verseSelection)
+                            case "Range":
+                                return Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd)
+                            default:
+                                return Verse(book: book, chapter: chapterSelection, verse: nil)
+                            }
+                        }()
+                    )
                         .padding()
                         .sheet(isPresented: $showChapterSelection) {
                             ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
@@ -160,7 +185,7 @@ struct ContentView: View {
     
     func loadVerseCount(for book: Book, chapter: Int) async {
         do {
-            verses = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+            verses = try await api.getVerseCount(bookId: book.id, chapter: chapter)
         } catch {
             fatalError()
         }

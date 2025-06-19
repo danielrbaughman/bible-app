@@ -77,6 +77,8 @@ struct ContentView: View {
                     PassageView(
                         verseStart: {
                             switch passageEndSelection {
+                            case "Book":
+                                return Verse(book: book, chapter: 1, verse: nil)
                             case "Chapter":
                                 return Verse(book: book, chapter: chapterSelection, verse: nil)
                             case "Verse":
@@ -89,6 +91,8 @@ struct ContentView: View {
                         }(),
                         verseEnd: {
                             switch passageEndSelection {
+                            case "Book":
+                                return Verse(book: book, chapter: chapters, verse: nil)
                             case "Chapter":
                                 return Verse(book: book, chapter: chapterSelection, verse: nil)
                             case "Verse":
@@ -135,6 +139,12 @@ struct ContentView: View {
                                     }
                                 }
                                 .pickerStyle(.segmented)
+
+                                if (passageEndSelection == "Book") {
+                                    Button("\(book.name)") {
+                                        // No additional selection needed for book
+                                    }
+                                }
 
                                 if (passageEndSelection == "Chapter") {
                                     Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {

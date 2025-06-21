@@ -128,4 +128,15 @@ class IQBibleAPI {
         let passage: [VerseData] = try await performRequest(endpoint: endpoint, queryItems: queryItems)
         return passage
     }
+    
+    func getVerse(verse: String) async throws -> VerseData {
+        let endpoint = "/GetVerse"
+        let queryItems = [
+            URLQueryItem(name: "verseId", value: verse),
+            URLQueryItem(name: "versionId", value: bibleVersion)
+        ]
+
+        let passage: VerseData = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        return passage
+    }
 }

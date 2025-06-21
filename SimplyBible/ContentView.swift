@@ -147,8 +147,22 @@ struct ContentView: View {
                                 }
                             }
 
+<<<<<<< HEAD
+                                if (passageEndSelection == "Book") {
+                                    Button("\(book.name)") {
+                                        // No additional selection needed for book
+                                    }
+                                }
+
+                                if (passageEndSelection == "Chapter") {
+                                    Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {
+                                        showChapterSelection.toggle()
+                                    }
+                                }
+=======
                             if (passageEndSelection == "Range") {
                                 Text("to")
+>>>>>>> fde863c08ff7a61f070e02504464e1b083747216
 
                                 Button("\(Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
                                     showPassageEndSelection.toggle()
@@ -184,7 +198,7 @@ struct ContentView: View {
     
     func loadVerseCount(for book: Book, chapter: Int) async {
         do {
-            verses = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+            verses = try await api.getVerseCount(bookId: book.id, chapter: chapter)
         } catch {
             fatalError()
         }

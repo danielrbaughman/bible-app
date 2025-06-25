@@ -72,9 +72,9 @@ class IQBibleAPI {
                 }
 
                 let decoder = JSONDecoder()
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print(jsonString)
-                }
+//                if let jsonString = String(data: data, encoding: .utf8) {
+//                    print(jsonString)
+//                }
                 let result = try decoder.decode(T.self, from: data)
                 return result
 

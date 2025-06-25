@@ -81,8 +81,6 @@ struct PassageView: View {
     @State private var verseStart: Int = 1
     @State private var verseEnd: Int = 1
 
-    var passageText: String { passage.map(\.text).joined(separator: " ") }
-
     var body: some View {
         NavigationStack {
             VStack {
@@ -94,9 +92,7 @@ struct PassageView: View {
                         Text("Loading passage...")
                     }
                 } else {
-                    ScrollView {
-                        Text(passageText)
-                    }
+                    MultiVerseView(verses: passage)
                 }
             }
             .task {

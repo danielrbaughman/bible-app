@@ -195,27 +195,6 @@ struct PassageView: View {
             }
         }
     }
-    
-    func loadChapterCount(for book: Book) async {
-        do {
-            chapters = try await api.getChapterCount(bookId: book.id)
-        } catch {
-            fatalError()
-        }
-    }
-
-    func loadVerseCount(for book: Book, chapter: Int) async {
-        do {
-            verses = try await api.getVerseCount(bookId: book.id, chapter: chapter)
-        } catch {
-            fatalError()
-        }
-    }
-
-    func loadBookInfo(for book: Book) async {
-        await loadChapterCount(for: book)
-        await loadVerseCount(for: book, chapter: 1)
-    }
 
     func getPassage(from book: Book, startAt indexStart: PassageIndex, endAt indexEnd: PassageIndex) async throws -> [VerseData] {
         var passage: [VerseData] = []
@@ -292,6 +271,27 @@ struct PassageView: View {
             passage.append(contentsOf: verses.compactMap { $0 })
         }
         return passage
+    }
+
+    func loadChapterCount(for book: Book) async {
+        do {
+            chapters = try await api.getChapterCount(bookId: book.id)
+        } catch {
+            fatalError()
+        }
+    }
+
+    func loadVerseCount(for book: Book, chapter: Int) async {
+        do {
+            verses = try await api.getVerseCount(bookId: book.id, chapter: chapter)
+        } catch {
+            fatalError()
+        }
+    }
+
+    func loadBookInfo(for book: Book) async {
+        await loadChapterCount(for: book)
+        await loadVerseCount(for: book, chapter: 1)
     }
 
     func loadPassage(book: Book) async {

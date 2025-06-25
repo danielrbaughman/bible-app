@@ -119,11 +119,19 @@ struct ContentView: View {
                             verseSelectionEnd = 1
                         }
                     }
+                    .onChange(of: verseSelection) { oldValue, newValue in
+                        Task {
+                            await loadPassage(book: book)
+                        }
+                    }
+                    .onChange(of: verseSelectionEnd) { oldValue, newValue in
+                        Task {
+                            await loadPassage(book: book)
+                        }
+                    }
                     .onChange(of: passageEndSelection) { oldValue, newValue in
                         Task {
                             await loadPassage(book: book)
-                            // Reset verse selection to 1 when chapter changes
-                            verseSelectionEnd = 1
                         }
                     }
                     .toolbar {

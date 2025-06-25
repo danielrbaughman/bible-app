@@ -23,12 +23,12 @@ struct NumberPickerView: View {
 
 struct ChapterPickerForm: View {
     var chapters: Int
-    @Binding var chapterSelection: Int
+    @Binding var chapter: Int
 
     var body: some View {
         VStack {
             Form {
-                NumberPickerView(label: "Chapter", range: chapters, selection: $chapterSelection)
+                NumberPickerView(label: "Chapter", range: chapters, selection: $chapter)
             }
         }
     }
@@ -37,15 +37,15 @@ struct ChapterPickerForm: View {
 struct VersePickerForm: View {
     var chapters: Int
     var verses: Int
-    @Binding var chapterSelection: Int
-    @Binding var verseSelection: Int
+    @Binding var chapter: Int
+    @Binding var verse: Int
 
     var body: some View {
         VStack {
             Form {
-                NumberPickerView(label: "Chapter", range: chapters, selection: $chapterSelection)
+                NumberPickerView(label: "Chapter", range: chapters, selection: $chapter)
                 
-                NumberPickerView(label: "Verse", range: verses, selection: $verseSelection)
+                NumberPickerView(label: "Verse", range: verses, selection: $verse)
             }
         }
     }
@@ -59,29 +59,32 @@ struct PassageIndex {
 struct PassageView: View {
     var api: IQBibleAPI
     var book: Book
-    
-    @State private var passage: [VerseData] = []
-    @State private var passageStart: PassageIndex = PassageIndex(chapter: 1, verse: 1)
-    @State private var passageEnd: PassageIndex = PassageIndex(chapter: 1, verse: 1)
-    @State private var isLoadingPassage = false
-    var passageEndSelectionOptions: [String] = ["Book", "Chapter", "Verse", "Range"]
-    @State private var chapterSelection: Int = 1
-    @State private var verseSelection: Int = 1
-    @State private var chapterSelectionEnd: Int = 1
-    @State private var verseSelectionEnd: Int = 1
-    @State private var passageEndSelection = "Chapter"
-    @State private var showPassageSelection = false
-    @State private var showPassageStartSelection = false
-    @State private var showPassageEndSelection = false
-    @State private var showChapterSelection = false
+
+    // Navigation Data
     @State private var chapters: Int = 0
     @State private var verses: Int = 0
-    @State private var path = NavigationPath()
+
+    // Passage State
+    @State private var passage: [VerseData] = []
+    @State private var isLoadingPassage = false
     
+    // Passage Selection UI
+    var passageModes: [String] = ["Book", "Chapter", "Verse", "Range"]
+    @State private var passageMode = "Chapter"
+    @State private var showChooseChapterModal = false
+    @State private var showChoosePassageStartModal = false
+    @State private var showChoosePassageEndModal = false
+
+    // Passage Selection State
+    @State private var chapterStart: Int = 1
+    @State private var chapterEnd: Int = 1
+    @State private var verseStart: Int = 1
+    @State private var verseEnd: Int = 1
+
     var passageText: String { passage.map(\.text).joined(separator: " ") }
-    
+
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             VStack {
                 if isLoadingPassage {
                     VStack {
@@ -97,103 +100,95 @@ struct PassageView: View {
                 }
             }
             .task {
+                await loadBookInfo(for: book)
                 await loadPassage(book: book)
             }
-            .sheet(isPresented: $showChapterSelection) {
-                ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
+            .sheet(isPresented: $showChooseChapterModal) {
+                ChapterPickerForm(chapters: chapters, chapter: $chapterStart)
             }
-            .sheet(isPresented: $showPassageStartSelection) {
-                VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
+            .sheet(isPresented: $showChoosePassageStartModal) {
+                VersePickerForm(chapters: chapters, verses: verses, chapter: $chapterStart, verse: $verseStart)
             }
-            .sheet(isPresented: $showPassageEndSelection) {
-                VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
-            }
-            .task {
-                await loadBookInfo(for: book)
+            .sheet(isPresented: $showChoosePassageEndModal) {
+                VersePickerForm(chapters: chapters, verses: verses, chapter: $chapterEnd, verse: $verseEnd)
             }
             .onChange(of: book) { oldValue, newValue in
                 Task {
                     await loadBookInfo(for: newValue)
                     await loadPassage(book: newValue)
                     // Reset verse selection to 1 when chapter changes
-                    verseSelection = 1
+                    verseStart = 1
                 }
             }
-            .onChange(of: chapterSelection) { oldValue, newValue in
-                if chapterSelectionEnd < newValue {
-                    chapterSelectionEnd = newValue
-                    passageEnd.chapter = newValue
+            .onChange(of: chapterStart) { oldValue, newValue in
+                if chapterEnd < newValue {
+                    chapterEnd = newValue
                 }
                 Task {
                     await loadVerseCount(for: book, chapter: newValue)
                     await loadPassage(book: book)
                     // Reset verse selection to 1 when chapter changes
-                    verseSelection = 1
-                    passageStart.verse = 1
+                    verseStart = 1
                 }
             }
-            .onChange(of: chapterSelectionEnd) { oldValue, newValue in
-                if newValue < chapterSelection {
-                    chapterSelectionEnd = chapterSelection
-                    passageEnd.chapter = chapterSelection
+            .onChange(of: chapterEnd) { oldValue, newValue in
+                if newValue < chapterStart {
+                    chapterEnd = chapterStart
                 }
                 Task {
                     await loadVerseCount(for: book, chapter: newValue)
                     await loadPassage(book: book)
                     // Reset verse selection to 1 when chapter changes
-                    verseSelectionEnd = 1
-                    passageEnd.verse = 1
+                    verseEnd = 1
                 }
             }
-            .onChange(of: verseSelection) { oldValue, newValue in
-                if verseSelectionEnd < newValue {
-                    verseSelectionEnd = newValue
-                    passageEnd.verse = newValue
+            .onChange(of: verseStart) { oldValue, newValue in
+                if verseEnd < newValue {
+                    verseEnd = newValue
                 }
                 Task {
                     await loadPassage(book: book)
                 }
             }
-            .onChange(of: verseSelectionEnd) { oldValue, newValue in
-                if newValue < verseSelection {
-                    verseSelectionEnd = verseSelection
-                    passageEnd.verse = verseSelection
+            .onChange(of: verseEnd) { oldValue, newValue in
+                if newValue < verseStart {
+                    verseEnd = verseStart
                 }
                 Task {
                     await loadPassage(book: book)
                 }
             }
-            .onChange(of: passageEndSelection) { oldValue, newValue in
+            .onChange(of: passageMode) { oldValue, newValue in
                 Task {
                     await loadPassage(book: book)
                 }
             }
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarLeading) {
-                    Picker("Passage Setting", selection: $passageEndSelection) {
-                        ForEach(passageEndSelectionOptions, id: \.self) {
+                    Picker("Passage Mode", selection: $passageMode) {
+                        ForEach(passageModes, id: \.self) {
                             Text("\($0)")
                         }
                     }
                     .pickerStyle(.segmented)
                     
-                    if (passageEndSelection == "Chapter") {
-                        Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {
-                            showChapterSelection.toggle()
+                    if (passageMode == "Chapter") {
+                        Button("\(Verse(book: book, chapter: chapterStart).formatted())") {
+                            showChooseChapterModal.toggle()
                         }
                     }
                     
-                    if (passageEndSelection == "Verse" || passageEndSelection == "Range") {
-                        Button("\(Verse(book: book, chapter: chapterSelection, verse: verseSelection).formatted())") {
-                            showPassageStartSelection.toggle()
+                    if (passageMode == "Verse" || passageMode == "Range") {
+                        Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted())") {
+                            showChoosePassageStartModal.toggle()
                         }
                     }
                     
-                    if (passageEndSelection == "Range") {
+                    if (passageMode == "Range") {
                         Text("to")
                         
-                        Button("\(Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
-                            showPassageEndSelection.toggle()
+                        Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted())") {
+                            showChoosePassageEndModal.toggle()
                         }
                     }
                 }
@@ -211,7 +206,7 @@ struct PassageView: View {
 
     func loadVerseCount(for book: Book, chapter: Int) async {
         do {
-            verses = try await api.getVerseCount(bookId: book.id, chapter: chapterSelection)
+            verses = try await api.getVerseCount(bookId: book.id, chapter: chapter)
         } catch {
             fatalError()
         }
@@ -220,24 +215,6 @@ struct PassageView: View {
     func loadBookInfo(for book: Book) async {
         await loadChapterCount(for: book)
         await loadVerseCount(for: book, chapter: 1)
-    }
-
-    func getPassage(from book: Book) async throws -> [VerseData] {
-        var passage: [VerseData] = []
-        let chaptersCount = try await api.getChapterCount(bookId: book.id)
-        for chapter in 1...chaptersCount {
-            let verses = try await api.getChapter(bookId: book.id, chapter: chapter)
-            passage.append(contentsOf: verses.compactMap { $0 })
-        }
-        return passage
-    }
-    
-    func getPassage(from book: Book, chapter: Int) async throws -> [VerseData] {
-        try await api.getChapter(bookId: book.id, chapter: chapterSelection).compactMap { $0 }
-    }
-
-    func getPassage(from book: Book, index indexStart: PassageIndex) async throws -> [VerseData] {
-        try await getPassage(from: book, startAt: indexStart, endAt: indexStart)
     }
 
     func getPassage(from book: Book, startAt indexStart: PassageIndex, endAt indexEnd: PassageIndex) async throws -> [VerseData] {
@@ -258,7 +235,7 @@ struct PassageView: View {
             passage.append(contentsOf: filtered.compactMap { $0 })
         } else {
             // Multiple chapters
-            // First chapter: from verseSelection to end
+            // First chapter: from the first index to end
             let firstChapterVerses = try await api.getChapter(
                 bookId: book.id,
                 chapter: indexStart.chapter
@@ -282,7 +259,7 @@ struct PassageView: View {
                 }
             }
 
-            // Last chapter: from 1 to verseSelectionEnd
+            // Last chapter: from 1 to the end index
             let lastChapterVerses = try await api.getChapter(
                 bookId: book.id,
                 chapter: indexEnd.chapter
@@ -299,18 +276,36 @@ struct PassageView: View {
         return passage
     }
 
+    func getPassage(from book: Book, chapter: Int) async throws -> [VerseData] {
+        try await api.getChapter(bookId: book.id, chapter: chapter).compactMap { $0 }
+    }
+
+    func getPassage(from book: Book, index indexStart: PassageIndex) async throws -> [VerseData] {
+        try await getPassage(from: book, startAt: indexStart, endAt: indexStart)
+    }
+
+    func getPassage(from book: Book) async throws -> [VerseData] {
+        var passage: [VerseData] = []
+        let chaptersCount = try await api.getChapterCount(bookId: book.id)
+        for chapter in 1...chaptersCount {
+            let verses = try await api.getChapter(bookId: book.id, chapter: chapter)
+            passage.append(contentsOf: verses.compactMap { $0 })
+        }
+        return passage
+    }
+
     func loadPassage(book: Book) async {
         isLoadingPassage = true
 
         do {
-            if passageEndSelection == "Book" {
+            if passageMode == "Book" {
                 passage = try await getPassage(from: book)
-            } else if passageEndSelection == "Chapter" {
-                passage = try await getPassage(from: book, chapter: passageStart.chapter)
-            } else if passageEndSelection == "Verse" {
-                passage = try await getPassage(from: book, index: passageStart)
-            } else if passageEndSelection == "Range" {
-                passage = try await getPassage(from: book, startAt: passageStart, endAt: passageEnd)
+            } else if passageMode == "Chapter" {
+                passage = try await getPassage(from: book, chapter: chapterStart)
+            } else if passageMode == "Verse" {
+                passage = try await getPassage(from: book, index: PassageIndex(chapter: chapterStart, verse: verseStart))
+            } else if passageMode == "Range" {
+                passage = try await getPassage(from: book, startAt: PassageIndex(chapter: chapterStart, verse: verseStart), endAt: PassageIndex(chapter: chapterEnd, verse: verseEnd))
             }
         } catch {
             fatalError()

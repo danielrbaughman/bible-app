@@ -59,6 +59,7 @@ struct ContentView: View {
     @State private var showChapterSelection = false
     
     @State private var passageText: String = "Loading..."
+    @State private var isShowingPassage = false
     @State private var isLoading: Bool = true
 
     @State private var chapters: Int = 0
@@ -77,8 +78,19 @@ struct ContentView: View {
             }
             .navigationDestination(for: Book.self) { book in
                 NavigationStack(path: $path) {
-                    ScrollView {
-                        Text(passageText)
+                    VStack {
+                        if isShowingPassage {
+                            ScrollView {
+                                Text(passageText)
+                            }
+                        } else {
+                            VStack {
+                                ProgressView()
+                                    .controlSize(.large)
+
+                                Text("Loading passage...")
+                            }
+                        }
                     }
                     .task {
                         await loadPassage(book: book)
@@ -204,6 +216,8 @@ struct ContentView: View {
     }
     
     func loadPassage(book: Book) async {
+        isShowingPassage = false
+
         if passageEndSelection == "Chapter" {
             do {
                 let verses = try await api.getChapter(
@@ -249,6 +263,8 @@ struct ContentView: View {
         } else if passageEndSelection == "Range" {
             print("R")
         }
+
+        isShowingPassage = true
     }
 }
 

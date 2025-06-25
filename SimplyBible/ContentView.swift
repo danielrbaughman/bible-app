@@ -59,7 +59,8 @@ struct ContentView: View {
     @State private var showChapterSelection = false
     
     @State private var passageText: String = "Loading..."
-    @State private var isShowingPassage = false
+    @State private var isLoadingPassage = false
+    @State private var isLoadingBooks = false
     @State private var isLoading: Bool = true
 
     @State private var chapters: Int = 0
@@ -71,119 +72,128 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List {
-                ForEach(books, id: \.id) { book in
-                    NavigationLink("\(book.name)", value: book)
+            if isLoadingBooks {
+                VStack {
+                    ProgressView()
+                        .controlSize(.large)
+
+                    Text("Loading books...")
                 }
-            }
-            .navigationDestination(for: Book.self) { book in
-                NavigationStack(path: $path) {
-                    VStack {
-                        if isShowingPassage {
-                            ScrollView {
-                                Text(passageText)
-                            }
-                        } else {
-                            VStack {
-                                ProgressView()
-                                    .controlSize(.large)
+            } else {
+                List {
+                    ForEach(books, id: \.id) { book in
+                        NavigationLink("\(book.name)", value: book)
+                    }
+                }
+                .navigationDestination(for: Book.self) { book in
+                    NavigationStack(path: $path) {
+                        VStack {
+                            if isLoadingPassage {
+                                VStack {
+                                    ProgressView()
+                                        .controlSize(.large)
 
-                                Text("Loading passage...")
-                            }
-                        }
-                    }
-                    .task {
-                        await loadPassage(book: book)
-                    }
-                    .sheet(isPresented: $showChapterSelection) {
-                        ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
-                    }
-                    .sheet(isPresented: $showPassageStartSelection) {
-                        VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
-                    }
-                    .sheet(isPresented: $showPassageEndSelection) {
-                        VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
-                    }
-                    .task {
-                        await loadBookInfo(for: book)
-                    }
-                    .onChange(of: book) { oldValue, newValue in
-                        Task {
-                            await loadBookInfo(for: newValue)
-                            await loadPassage(book: newValue)
-                            // Reset verse selection to 1 when chapter changes
-                            verseSelection = 1
-                        }
-                    }
-                    .onChange(of: chapterSelection) { oldValue, newValue in
-                        if chapterSelectionEnd < newValue {
-                            chapterSelectionEnd = newValue
-                        }
-                        Task {
-                            await loadVerseCount(for: book, chapter: newValue)
-                            await loadPassage(book: book)
-                            // Reset verse selection to 1 when chapter changes
-                            verseSelection = 1
-                        }
-                    }
-                    .onChange(of: chapterSelectionEnd) { oldValue, newValue in
-                        if newValue < chapterSelection {
-                            chapterSelectionEnd = chapterSelection
-                        }
-                        Task {
-                            await loadVerseCount(for: book, chapter: newValue)
-                            await loadPassage(book: book)
-                            // Reset verse selection to 1 when chapter changes
-                            verseSelectionEnd = 1
-                        }
-                    }
-                    .onChange(of: verseSelection) { oldValue, newValue in
-                        if verseSelectionEnd < newValue {
-                            verseSelectionEnd = newValue
-                        }
-                        Task {
-                            await loadPassage(book: book)
-                        }
-                    }
-                    .onChange(of: verseSelectionEnd) { oldValue, newValue in
-                        if newValue < verseSelection {
-                            verseSelectionEnd = verseSelection
-                        }
-                        Task {
-                            await loadPassage(book: book)
-                        }
-                    }
-                    .onChange(of: passageEndSelection) { oldValue, newValue in
-                        Task {
-                            await loadPassage(book: book)
-                        }
-                    }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .navigationBarLeading) {
-                            Picker("Passage Setting", selection: $passageEndSelection) {
-                                ForEach(passageEndSelectionOptions, id: \.self) {
-                                    Text("\($0)")
+                                    Text("Loading passage...")
+                                }
+                            } else {
+                                ScrollView {
+                                    Text(passageText)
                                 }
                             }
-                            .pickerStyle(.segmented)
-
-                            if (passageEndSelection == "Chapter") {
-                                Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {
-                                    showChapterSelection.toggle()
-                                }
+                        }
+                        .task {
+                            await loadPassage(book: book)
+                        }
+                        .sheet(isPresented: $showChapterSelection) {
+                            ChapterPickerForm(chapters: chapters, chapterSelection: $chapterSelection)
+                        }
+                        .sheet(isPresented: $showPassageStartSelection) {
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelection, verseSelection: $verseSelection)
+                        }
+                        .sheet(isPresented: $showPassageEndSelection) {
+                            VersePickerForm(chapters: chapters, verses: verses, chapterSelection: $chapterSelectionEnd, verseSelection: $verseSelectionEnd)
+                        }
+                        .task {
+                            await loadBookInfo(for: book)
+                        }
+                        .onChange(of: book) { oldValue, newValue in
+                            Task {
+                                await loadBookInfo(for: newValue)
+                                await loadPassage(book: newValue)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelection = 1
                             }
-
-                            if (passageEndSelection == "Verse" || passageEndSelection == "Range") {
-                                Button("\(Verse(book: book, chapter: chapterSelection, verse: verseSelection).formatted())") {
-                                    showPassageStartSelection.toggle()
-                                }
+                        }
+                        .onChange(of: chapterSelection) { oldValue, newValue in
+                            if chapterSelectionEnd < newValue {
+                                chapterSelectionEnd = newValue
                             }
+                            Task {
+                                await loadVerseCount(for: book, chapter: newValue)
+                                await loadPassage(book: book)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelection = 1
+                            }
+                        }
+                        .onChange(of: chapterSelectionEnd) { oldValue, newValue in
+                            if newValue < chapterSelection {
+                                chapterSelectionEnd = chapterSelection
+                            }
+                            Task {
+                                await loadVerseCount(for: book, chapter: newValue)
+                                await loadPassage(book: book)
+                                // Reset verse selection to 1 when chapter changes
+                                verseSelectionEnd = 1
+                            }
+                        }
+                        .onChange(of: verseSelection) { oldValue, newValue in
+                            if verseSelectionEnd < newValue {
+                                verseSelectionEnd = newValue
+                            }
+                            Task {
+                                await loadPassage(book: book)
+                            }
+                        }
+                        .onChange(of: verseSelectionEnd) { oldValue, newValue in
+                            if newValue < verseSelection {
+                                verseSelectionEnd = verseSelection
+                            }
+                            Task {
+                                await loadPassage(book: book)
+                            }
+                        }
+                        .onChange(of: passageEndSelection) { oldValue, newValue in
+                            Task {
+                                await loadPassage(book: book)
+                            }
+                        }
+                        .toolbar {
+                            ToolbarItemGroup(placement: .navigationBarLeading) {
+                                Picker("Passage Setting", selection: $passageEndSelection) {
+                                    ForEach(passageEndSelectionOptions, id: \.self) {
+                                        Text("\($0)")
+                                    }
+                                }
+                                .pickerStyle(.segmented)
 
-                            if (passageEndSelection == "Range") {
-                                Text("to")
+                                if (passageEndSelection == "Chapter") {
+                                    Button("\(Verse(book: book, chapter: chapterSelection).formatted())") {
+                                        showChapterSelection.toggle()
+                                    }
+                                }
 
-                                Button("\(Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
-                                    showPassageEndSelection.toggle()
+                                if (passageEndSelection == "Verse" || passageEndSelection == "Range") {
+                                    Button("\(Verse(book: book, chapter: chapterSelection, verse: verseSelection).formatted())") {
+                                        showPassageStartSelection.toggle()
+                                    }
+                                }
+
+                                if (passageEndSelection == "Range") {
+                                    Text("to")
+
+                                    Button("\(Verse(book: book, chapter: chapterSelectionEnd, verse: verseSelectionEnd).formatted())") {
+                                        showPassageEndSelection.toggle()
+                                    }
                                 }
                             }
                         }
@@ -199,11 +209,13 @@ struct ContentView: View {
     }
     
     func loadBooks() async {
+        isLoadingBooks = true
         do {
             books = try await api.getBooks()
         } catch {
             fatalError("Failed to load books: \(error)")
         }
+        isLoadingBooks = false
     }
     
     func loadChapterCount(for book: Book) async {
@@ -228,7 +240,7 @@ struct ContentView: View {
     }
     
     func loadPassage(book: Book) async {
-        isShowingPassage = false
+        isLoadingPassage = true
 
         if passageEndSelection == "Book" {
             do {
@@ -335,7 +347,7 @@ struct ContentView: View {
             }
         }
 
-        isShowingPassage = true
+        isLoadingPassage = false
     }
 }
 

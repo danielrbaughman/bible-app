@@ -116,6 +116,9 @@ struct ContentView: View {
                         }
                     }
                     .onChange(of: chapterSelection) { oldValue, newValue in
+                        if chapterSelectionEnd < newValue {
+                            chapterSelectionEnd = newValue
+                        }
                         Task {
                             await loadVerseCount(for: book, chapter: newValue)
                             await loadPassage(book: book)
@@ -124,6 +127,9 @@ struct ContentView: View {
                         }
                     }
                     .onChange(of: chapterSelectionEnd) { oldValue, newValue in
+                        if newValue < chapterSelection {
+                            chapterSelectionEnd = chapterSelection
+                        }
                         Task {
                             await loadVerseCount(for: book, chapter: newValue)
                             await loadPassage(book: book)
@@ -132,11 +138,17 @@ struct ContentView: View {
                         }
                     }
                     .onChange(of: verseSelection) { oldValue, newValue in
+                        if verseSelectionEnd < newValue {
+                            verseSelectionEnd = newValue
+                        }
                         Task {
                             await loadPassage(book: book)
                         }
                     }
                     .onChange(of: verseSelectionEnd) { oldValue, newValue in
+                        if newValue < verseSelection {
+                            verseSelectionEnd = verseSelection
+                        }
                         Task {
                             await loadPassage(book: book)
                         }
@@ -218,19 +230,7 @@ struct ContentView: View {
     func loadPassage(book: Book) async {
         isShowingPassage = false
 
-        if passageEndSelection == "Chapter" {
-            do {
-                let verses = try await api.getChapter(
-                    bookId: book.id,
-                    chapter: chapterSelection
-                ).compactMap { $0.text as String }
-                passageText = "\(verses.joined(separator: "\n"))"
-            } catch {
-                await MainActor.run {
-                    passageText = "Failed to load passage: \(error.localizedDescription)"
-                }
-            }
-        } else if passageEndSelection == "Book" {
+        if passageEndSelection == "Book" {
             do {
                 let chaptersCount = try await api.getChapterCount(bookId: book.id)
                 var allVerses: [String] = []
@@ -242,6 +242,18 @@ struct ContentView: View {
             } catch {
                 await MainActor.run {
                     passageText = "Failed to load book: \(error.localizedDescription)"
+                }
+            }
+        } else if passageEndSelection == "Chapter" {
+            do {
+                let verses = try await api.getChapter(
+                    bookId: book.id,
+                    chapter: chapterSelection
+                ).compactMap { $0.text as String }
+                passageText = "\(verses.joined(separator: "\n"))"
+            } catch {
+                await MainActor.run {
+                    passageText = "Failed to load passage: \(error.localizedDescription)"
                 }
             }
         } else if passageEndSelection == "Verse" {
@@ -261,7 +273,66 @@ struct ContentView: View {
                 }
             }
         } else if passageEndSelection == "Range" {
-            print("R")
+            do {
+                var versesInRange: [String] = []
+                if chapterSelection == chapterSelectionEnd {
+                    // Single chapter range
+                    let chapterVerses = try await api.getChapter(
+                        bookId: book.id,
+                        chapter: chapterSelection
+                    )
+                    let filtered = chapterVerses.filter {
+                        if let verseNum = Int($0.verse) {
+                            return verseNum >= verseSelection && verseNum <= verseSelectionEnd
+                        }
+                        return false
+                    }
+                    versesInRange.append(contentsOf: filtered.compactMap { $0.text })
+                } else {
+                    // Multiple chapters
+                    // First chapter: from verseSelection to end
+                    let firstChapterVerses = try await api.getChapter(
+                        bookId: book.id,
+                        chapter: chapterSelection
+                    )
+                    let firstFiltered = firstChapterVerses.filter {
+                        if let verseNum = Int($0.verse) {
+                            return verseNum >= verseSelection
+                        }
+                        return false
+                    }
+                    versesInRange.append(contentsOf: firstFiltered.compactMap { $0.text })
+
+                    // Middle chapters: all verses
+                    if chapterSelectionEnd > chapterSelection + 1 {
+                        for chapter in (chapterSelection + 1)..<chapterSelectionEnd {
+                            let middleChapterVerses = try await api.getChapter(
+                                bookId: book.id,
+                                chapter: chapter
+                            )
+                            versesInRange.append(contentsOf: middleChapterVerses.compactMap { $0.text })
+                        }
+                    }
+
+                    // Last chapter: from 1 to verseSelectionEnd
+                    let lastChapterVerses = try await api.getChapter(
+                        bookId: book.id,
+                        chapter: chapterSelectionEnd
+                    )
+                    let lastFiltered = lastChapterVerses.filter {
+                        if let verseNum = Int($0.verse) {
+                            return verseNum <= verseSelectionEnd
+                        }
+                        return false
+                    }
+                    versesInRange.append(contentsOf: lastFiltered.compactMap { $0.text })
+                }
+                passageText = versesInRange.joined(separator: "\n")
+            } catch {
+                await MainActor.run {
+                    passageText = "Failed to load range: \(error.localizedDescription)"
+                }
+            }
         }
 
         isShowingPassage = true

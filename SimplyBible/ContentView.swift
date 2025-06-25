@@ -217,7 +217,19 @@ struct ContentView: View {
                 }
             }
         } else if passageEndSelection == "Book" {
-            print("B")
+            do {
+                let chaptersCount = try await api.getChapterCount(bookId: book.id)
+                var allVerses: [String] = []
+                for chapter in 1...chaptersCount {
+                    let verses = try await api.getChapter(bookId: book.id, chapter: chapter)
+                    allVerses.append(contentsOf: verses.compactMap { $0.text as String })
+                }
+                passageText = allVerses.joined(separator: "\n")
+            } catch {
+                await MainActor.run {
+                    passageText = "Failed to load book: \(error.localizedDescription)"
+                }
+            }
         } else if passageEndSelection == "Verse" {
             do {
                 let chapterVerses = try await api.getChapter(

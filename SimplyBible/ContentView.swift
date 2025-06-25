@@ -211,15 +211,7 @@ struct ContentView: View {
         } else if passageEndSelection == "Book" {
             print("B")
         } else if passageEndSelection == "Verse" {
-            print("Verse")
-            do {
-                let verse = try await api.getVerse(verse: verseSelection)
-                passageText = verse.text
-            } catch {
-                await MainActor.run {
-                    passageText = "Failed to load passage: \(error.localizedDescription)"
-                }
-            }
+            print("V")
         } else if passageEndSelection == "Range" {
             print("R")
         }

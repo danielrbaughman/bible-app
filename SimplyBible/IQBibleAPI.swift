@@ -85,38 +85,58 @@ class IQBibleAPI {
             }
         }
     
+    // MARK: - Caching
+    private var booksCache: [String: [Book]] = [:] // language -> books
+    private var chapterCountCache: [String: Int] = [:] // bookId -> chapterCount
+    private var verseCountCache: [String: [Int: Int]] = [:] // bookId -> [chapter: verseCount]
+    private var chapterCache: [String: [Int: [VerseData]]] = [:] // bookId -> [chapter: [VerseData]]
+    private var verseCache: [String: VerseData] = [:] // verseId -> VerseData
+
     func getBooks(language: String = "english") async throws -> [Book] {
+        if let cached = booksCache[language] {
+            return cached
+        }
         let endpoint = "/GetBooks"
         let queryItems = [URLQueryItem(name: "language", value: language)]
-
         let books: [Book] = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        booksCache[language] = books
         return books
     }
     
     func getChapterCount(bookId: String, language: String = "english") async throws -> Int {
+        if let cached = chapterCountCache[bookId] {
+            return cached
+        }
         let endpoint = "/GetChapterCount"
         let queryItems = [
             URLQueryItem(name: "bookId", value: bookId),
             URLQueryItem(name: "language", value: language)
         ]
-
         let chapterCount: ChapterCount = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        chapterCountCache[bookId] = chapterCount.chapterCount
         return chapterCount.chapterCount
     }
     
     func getVerseCount(bookId: String, chapter: Int, language: String = "english") async throws -> Int {
+        if let cached = verseCountCache[bookId]?[chapter] {
+            return cached
+        }
         let endpoint = "/GetVerseCount"
         let queryItems = [
             URLQueryItem(name: "bookId", value: bookId),
             URLQueryItem(name: "chapterId", value: String(chapter)),
             URLQueryItem(name: "language", value: language)
         ]
-
         let verseCount: VerseCount = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        if verseCountCache[bookId] == nil { verseCountCache[bookId] = [:] }
+        verseCountCache[bookId]?[chapter] = verseCount.verseCount
         return verseCount.verseCount
     }
     
     func getChapter(bookId: String, chapter: Int, language: String = "english") async throws -> [VerseData] {
+        if let cached = chapterCache[bookId]?[chapter] {
+            return cached
+        }
         let endpoint = "/GetChapter"
         let queryItems = [
             URLQueryItem(name: "bookId", value: bookId),
@@ -124,19 +144,23 @@ class IQBibleAPI {
             URLQueryItem(name: "versionId", value: bibleVersion),
             URLQueryItem(name: "language", value: language)
         ]
-
         let passage: [VerseData] = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        if chapterCache[bookId] == nil { chapterCache[bookId] = [:] }
+        chapterCache[bookId]?[chapter] = passage
         return passage
     }
     
     func getVerse(verse: String) async throws -> VerseData {
+        if let cached = verseCache[verse] {
+            return cached
+        }
         let endpoint = "/GetVerse"
         let queryItems = [
             URLQueryItem(name: "verseId", value: verse),
             URLQueryItem(name: "versionId", value: bibleVersion)
         ]
-
         let passage: VerseData = try await performRequest(endpoint: endpoint, queryItems: queryItems)
+        verseCache[verse] = passage
         return passage
     }
 }

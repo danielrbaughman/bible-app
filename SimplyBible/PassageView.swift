@@ -7,6 +7,66 @@
 
 import SwiftUI
 
+struct IndexPickers: View {
+    var passageMode: String
+    var book: Book
+    var chapterStart: Int
+    var verseStart: Int
+    var chapterEnd: Int
+    var verseEnd: Int
+    @Binding var showChooseChapterModal: Bool
+    @Binding var showChoosePassageStartModal: Bool
+    @Binding var showChoosePassageEndModal: Bool
+
+    var body: some View {
+        if (passageMode == "Chapter") {
+            Button("\(Verse(book: book, chapter: chapterStart).formatted())") {
+                showChooseChapterModal.toggle()
+            }
+        }
+
+        if (passageMode == "Verse" || passageMode == "Range") {
+            Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted())") {
+                showChoosePassageStartModal.toggle()
+            }
+        }
+
+        if (passageMode == "Range") {
+            Text("to")
+
+            Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted())") {
+                showChoosePassageEndModal.toggle()
+            }
+        }
+    }
+}
+
+struct SwitchablePickerStyle: ViewModifier {
+    var isSegmented: Bool
+    func body(content: Content) -> some View {
+        if isSegmented {
+            content.pickerStyle(.segmented)
+        } else {
+            content.pickerStyle(.menu)
+        }
+    }
+}
+
+struct PassageModePicker: View {
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    var passageModes: [String]
+    @Binding var passageMode: String
+
+    var body: some View {
+        Picker("Passage Mode", selection: $passageMode) {
+            ForEach(passageModes, id: \.self) {
+                Text("\($0)")
+            }
+        }
+        .modifier(SwitchablePickerStyle(isSegmented: horizontalSizeClass == .regular))
+    }
+}
+
 struct NumberPickerView: View {
     var label: String
     var range: Int
@@ -60,6 +120,8 @@ struct PassageView: View {
     var api: IQBibleAPI
     var book: Book
 
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+
     // Navigation Data
     @State private var chapters: Int = 0
     @State private var verses: Int = 0
@@ -82,7 +144,7 @@ struct PassageView: View {
     @State private var verseEnd: Int = 1
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             VStack {
                 if isLoadingPassage {
                     VStack {
@@ -160,32 +222,19 @@ struct PassageView: View {
                 }
             }
             .toolbar {
-                ToolbarItemGroup(placement: .navigationBarLeading) {
-                    Picker("Passage Mode", selection: $passageMode) {
-                        ForEach(passageModes, id: \.self) {
-                            Text("\($0)")
-                        }
+                if horizontalSizeClass == .regular {
+                    ToolbarItemGroup(placement: .navigationBarLeading) {
+                        PassageModePicker(passageModes: passageModes, passageMode: $passageMode)
+
+                        IndexPickers(passageMode: passageMode, book: book, chapterStart: chapterStart, verseStart: verseStart, chapterEnd: chapterEnd, verseEnd: verseEnd, showChooseChapterModal: $showChooseChapterModal, showChoosePassageStartModal: $showChoosePassageStartModal, showChoosePassageEndModal: $showChoosePassageEndModal)
                     }
-                    .pickerStyle(.segmented)
-                    
-                    if (passageMode == "Chapter") {
-                        Button("\(Verse(book: book, chapter: chapterStart).formatted())") {
-                            showChooseChapterModal.toggle()
-                        }
-                    }
-                    
-                    if (passageMode == "Verse" || passageMode == "Range") {
-                        Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted())") {
-                            showChoosePassageStartModal.toggle()
-                        }
-                    }
-                    
-                    if (passageMode == "Range") {
-                        Text("to")
-                        
-                        Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted())") {
-                            showChoosePassageEndModal.toggle()
-                        }
+                } else {
+                    ToolbarItemGroup(placement: .bottomBar) {
+                        PassageModePicker(passageModes: passageModes, passageMode: $passageMode)
+
+                        Spacer()
+
+                        IndexPickers(passageMode: passageMode, book: book, chapterStart: chapterStart, verseStart: verseStart, chapterEnd: chapterEnd, verseEnd: verseEnd, showChooseChapterModal: $showChooseChapterModal, showChoosePassageStartModal: $showChoosePassageStartModal, showChoosePassageEndModal: $showChoosePassageEndModal)
                     }
                 }
             }

@@ -7,40 +7,6 @@
 
 import SwiftUI
 
-struct IndexPickers: View {
-    var passageMode: String
-    var book: Book
-    var chapterStart: Int
-    var verseStart: Int
-    var chapterEnd: Int
-    var verseEnd: Int
-    @Binding var showChooseChapterModal: Bool
-    @Binding var showChoosePassageStartModal: Bool
-    @Binding var showChoosePassageEndModal: Bool
-
-    var body: some View {
-        if (passageMode == "Chapter") {
-            Button("\(Verse(book: book, chapter: chapterStart).formatted())") {
-                showChooseChapterModal.toggle()
-            }
-        }
-
-        if (passageMode == "Verse" || passageMode == "Range") {
-            Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted())") {
-                showChoosePassageStartModal.toggle()
-            }
-        }
-
-        if (passageMode == "Range") {
-            Text("to")
-
-            Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted())") {
-                showChoosePassageEndModal.toggle()
-            }
-        }
-    }
-}
-
 struct SwitchablePickerStyle: ViewModifier {
     var isSegmented: Bool
     func body(content: Content) -> some View {
@@ -63,7 +29,8 @@ struct PassageModePicker: View {
                 Text("\($0)")
             }
         }
-        .modifier(SwitchablePickerStyle(isSegmented: horizontalSizeClass == .regular))
+        .pickerStyle(.segmented)
+//        .modifier(SwitchablePickerStyle(isSegmented: horizontalSizeClass == .regular))
     }
 }
 
@@ -143,8 +110,23 @@ struct PassageView: View {
     @State private var verseStart: Int = 1
     @State private var verseEnd: Int = 1
 
+    var verseMode: String {
+        switch passageMode {
+        case "Book":
+            return "book"
+        case "Chapter":
+            return "chapter"
+        case "Verse":
+            return "verse"
+        case "Range":
+            return "verse"
+        default:
+            return "Invalid mode"
+        }
+    }
+
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 if isLoadingPassage {
                     VStack {
@@ -226,15 +208,53 @@ struct PassageView: View {
                     ToolbarItemGroup(placement: .navigationBarLeading) {
                         PassageModePicker(passageModes: passageModes, passageMode: $passageMode)
 
-                        IndexPickers(passageMode: passageMode, book: book, chapterStart: chapterStart, verseStart: verseStart, chapterEnd: chapterEnd, verseEnd: verseEnd, showChooseChapterModal: $showChooseChapterModal, showChoosePassageStartModal: $showChoosePassageStartModal, showChoosePassageEndModal: $showChoosePassageEndModal)
+                        if (passageMode == "Chapter") {
+                            Button("\(Verse(book: book, chapter: chapterStart).formatted(mode: "chapter"))") {
+                                showChooseChapterModal.toggle()
+                            }
+                        }
+
+                        if (passageMode == "Verse" || passageMode == "Range") {
+                            Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted(mode: "verse"))") {
+                                showChoosePassageStartModal.toggle()
+                            }
+                        }
+
+                        if (passageMode == "Range") {
+                            Text("to")
+
+                            Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted(mode: "verse"))") {
+                                showChoosePassageEndModal.toggle()
+                            }
+                        }
                     }
                 } else {
-                    ToolbarItemGroup(placement: .bottomBar) {
+                    ToolbarItem(placement: .navigationBarTrailing) {
                         PassageModePicker(passageModes: passageModes, passageMode: $passageMode)
+                    }
 
-                        Spacer()
+                    ToolbarItemGroup(placement: .bottomBar) {
+                        if passageMode == "Range" {
+                            Spacer()
+                            Spacer()
+                        }
 
-                        IndexPickers(passageMode: passageMode, book: book, chapterStart: chapterStart, verseStart: verseStart, chapterEnd: chapterEnd, verseEnd: verseEnd, showChooseChapterModal: $showChooseChapterModal, showChoosePassageStartModal: $showChoosePassageStartModal, showChoosePassageEndModal: $showChoosePassageEndModal)
+                        Button("\(Verse(book: book, chapter: chapterStart, verse: verseStart).formatted(mode: verseMode))") {
+                            showChooseChapterModal.toggle()
+                        }
+
+                        if passageMode == "Range" {
+                            Spacer()
+                            Text("to")
+                            Spacer()
+
+                            Button("\(Verse(book: book, chapter: chapterEnd, verse: verseEnd).formatted(mode: verseMode))") {
+                                showChoosePassageEndModal.toggle()
+                            }
+
+                            Spacer()
+                            Spacer()
+                        }
                     }
                 }
             }

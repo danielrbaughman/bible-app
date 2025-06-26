@@ -12,11 +12,18 @@ struct Verse {
     var chapter: Int
     var verse: Int?
 
-    func formatted() -> String {
-        if verse == nil {
+    func formatted(mode: String? = nil) -> String {
+        switch mode {
+        case "book":
+            return book.name
+        case "chapter":
             return "\(book.name) \(chapter)"
+        case "verse":
+            return "\(book.name) \(chapter):\(verse!)"
+        default:
+            break
         }
 
-        return "\(book.name) \(chapter):\(verse!)"
+        return "No mode specified"
     }
 }

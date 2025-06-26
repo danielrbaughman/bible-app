@@ -39,8 +39,8 @@ struct ContentView: View {
             }
         } else {
             // iPhone layout
-            NavigationView {
-                List {
+            NavigationStack {
+                VStack {
                     if isLoadingBooks {
                         VStack {
                             ProgressView()
@@ -49,9 +49,11 @@ struct ContentView: View {
                             Text("Loading books...")
                         }
                     } else {
-                        ForEach(books, id: \.id) { book in
-                            NavigationLink(destination: PassageView(api: bible, book: book)) {
-                                Text(book.name)
+                        List {
+                            ForEach(books, id: \.id) { book in
+                                NavigationLink(destination: PassageView(api: bible, book: book)) {
+                                    Text(book.name)
+                                }
                             }
                         }
                     }
